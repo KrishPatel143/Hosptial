@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { UpdatePatientById } from "@/utils/api"
+import { formatPatientForUpdate, updatePatient } from "./patientUtils"
 
 export function EditPatientDialog({ 
   selectedPatient, 
@@ -42,47 +42,10 @@ export function EditPatientDialog({
     }))
   }
 
-  // Helper function to parse address string into object
-  const parseAddressString = (addressString) => {
-    try {
-      // Assuming format: "street, city, state postalCode"
-      const parts = addressString.split(',').map(part => part.trim())
-      
-      if (parts.length >= 3) {
-        const street = parts[0]
-        const city = parts[1]
-        // Last part might contain "state postalCode"
-        const statePostal = parts[2].split(' ')
-        const state = statePostal[0]
-        const postalCode = statePostal.slice(1).join(' ')
-        
-        return {
-          street,
-          city,
-          state,
-          postalCode,
-          country: selectedPatient.originalData.profile.address.country || "USA" // Preserve country or default
-        }
-      }
-      
-      // Fallback if parsing fails
-      return {
-        street: addressString,
-        city: "",
-        state: "",
-        postalCode: "",
-        country: selectedPatient.originalData.profile.address.country || "USA"
-      }
-    } catch (e) {
-      console.error("Error parsing address:", e)
-      return {
-        street: addressString,
-        city: "",
-        state: "",
-        postalCode: "",
-        country: "USA"
-      }
-    }
+  // Handle dialog close
+  const handleClose = () => {
+    setIsEditingPatient(false)
+    setEditedPatient(null)
   }
 
   // Handle patient update submission
@@ -93,33 +56,10 @@ export function EditPatientDialog({
       setIsUpdating(true)
       
       // Transform the edited data back to the format expected by the API
-      const updatedData = {
-        profile: {
-          name: editedPatient.name,
-          age: parseInt(editedPatient.age),
-          gender: editedPatient.gender,
-          phone: editedPatient.contact,
-          email: editedPatient.email,
-          bloodType: editedPatient.bloodType || selectedPatient.bloodType,
-          address: {
-            // Parse the address if it's in string format
-            ...(typeof editedPatient.address === 'string' 
-                ? parseAddressString(editedPatient.address) 
-                : selectedPatient.originalData.profile.address)
-          }
-        },
-        medicalInfo: {
-          // Parse medical history if it's in string format
-          chronicConditions: typeof editedPatient.medicalHistory === 'string' 
-              ? editedPatient.medicalHistory.split(', ').filter(item => item.trim() !== '')
-              : selectedPatient.originalData.medicalInfo.chronicConditions,
-          allergies: selectedPatient.originalData.medicalInfo.allergies,
-          medications: selectedPatient.originalData.medicalInfo.medications
-        }
-      }
+      const updatedData = formatPatientForUpdate(editedPatient, selectedPatient)
 
       // Call the update API
-      await UpdatePatientById(selectedPatient.id.replace(':', ''), updatedData)
+      await updatePatient(selectedPatient.id, updatedData)
       
       // Update the local state with the edited patient
       setPatients(prevPatients => 
@@ -139,7 +79,7 @@ export function EditPatientDialog({
       )
       
       // Reset states
-      setIsEditingPatient(false)
+      handleClose()
       
       // Show success notification (you can add a toast notification library here)
       console.log("Patient updated successfully")
@@ -152,6 +92,7 @@ export function EditPatientDialog({
     }
   }
 
+  // Don't render if no patient is selected or not in edit mode
   if (!selectedPatient || !isEditingPatient || !editedPatient) {
     return null
   }
@@ -161,8 +102,7 @@ export function EditPatientDialog({
       open={!!selectedPatient && isEditingPatient}
       onOpenChange={(open) => {
         if (!open) {
-          setIsEditingPatient(false)
-          setEditedPatient(null)
+          handleClose()
         }
       }}
     >
@@ -201,16 +141,16 @@ export function EditPatientDialog({
             <div className="space-y-2">
               <Label htmlFor="edit-gender">Gender</Label>
               <Select 
-                value={editedPatient.gender?.toLowerCase() || ""}
+                value={editedPatient.gender || ""}
                 onValueChange={(value) => handleEditChange('gender', value)}
               >
                 <SelectTrigger id="edit-gender">
-                  <SelectValue />
+                  <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -236,15 +176,15 @@ export function EditPatientDialog({
             <div className="space-y-2">
               <Label htmlFor="edit-status">Status</Label>
               <Select 
-                value={editedPatient.status?.toLowerCase() || ""}
+                value={editedPatient.status || ""}
                 onValueChange={(value) => handleEditChange('status', value)}
               >
                 <SelectTrigger id="edit-status">
-                  <SelectValue />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,10 +208,7 @@ export function EditPatientDialog({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => {
-            setIsEditingPatient(false)
-            setEditedPatient(null)
-          }}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button

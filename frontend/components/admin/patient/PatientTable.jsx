@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +15,8 @@ export function PatientTable({
   setSelectedPatient, 
   setIsEditingPatient 
 }) {
+  const [openDropdownId, setOpenDropdownId] = useState(null)
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-16">
@@ -29,6 +31,27 @@ export function PatientTable({
         <p className="text-destructive">{error}</p>
       </div>
     )
+  }
+
+  const handleViewDetails = (patient) => {
+    setOpenDropdownId(null) // Close dropdown first
+    setTimeout(() => {
+      setSelectedPatient(patient)
+    }, 100) // Small delay to ensure dropdown is closed
+  }
+
+  const handleEditPatient = (patient) => {
+    setOpenDropdownId(null) // Close dropdown first
+    setTimeout(() => {
+      setSelectedPatient(patient)
+      setIsEditingPatient(true)
+    }, 100) // Small delay to ensure dropdown is closed
+  }
+
+  const handleDeletePatient = (patient) => {
+    setOpenDropdownId(null) // Close dropdown first
+    // Add your delete logic here
+    console.log("Delete patient:", patient.id)
   }
 
   return (
@@ -52,7 +75,7 @@ export function PatientTable({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{patient.name?.charAt(0) || "?"}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium">{patient.name}</p>
@@ -64,7 +87,7 @@ export function PatientTable({
                 <TableCell className="hidden md:table-cell">{patient.gender}</TableCell>
                 <TableCell>{patient.contact}</TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {new Date(patient.lastVisit).toLocaleDateString()}
+                  {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : "No visits"}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -75,27 +98,43 @@ export function PatientTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
+                  <DropdownMenu 
+                    open={openDropdownId === patient.id}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        setOpenDropdownId(patient.id)
+                      } else {
+                        setOpenDropdownId(null)
+                      }
+                    }}
+                  >
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        aria-label={`Actions for ${patient.name}`}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Actions</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setSelectedPatient(patient)}>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem 
+                        onClick={() => handleViewDetails(patient)}
+                        className="cursor-pointer"
+                      >
                         View Details
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => {
-                          setSelectedPatient(patient)
-                          setIsEditingPatient(true)
-                        }}
+                        onClick={() => handleEditPatient(patient)}
+                        className="cursor-pointer"
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Patient
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem 
+                        onClick={() => handleDeletePatient(patient)}
+                        className="text-destructive cursor-pointer focus:text-destructive"
+                      >
                         <Trash className="mr-2 h-4 w-4" />
                         Delete Patient
                       </DropdownMenuItem>

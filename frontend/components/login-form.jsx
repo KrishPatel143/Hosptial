@@ -58,7 +58,7 @@ export default function LoginForm() {
       
       if (response.success) {
         // Save JWT token to cookies
-        console.log( response);
+        console.log( response); 
         
         // Show success toast
         toast.success("Login Successful", {

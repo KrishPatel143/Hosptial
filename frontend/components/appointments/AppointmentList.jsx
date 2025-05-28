@@ -17,7 +17,7 @@ export function AppointmentList({
   doctors = [],
   onViewDetails,
   onEditAppointment,
-  onCompleteAppointment, // Added this prop for the completion form
+  onCompleteAppointment,
   onChangeStatus,
   onCancelAppointment,
   isLoading = false
@@ -25,6 +25,7 @@ export function AppointmentList({
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [appointmentTab, setAppointmentTab] = useState("all")
+  const [openDropdownId, setOpenDropdownId] = useState(null)
 
   // Filter appointments based on search term, status filter, and tab
   const filteredAppointments = appointments.filter((appointment) => {
@@ -36,12 +37,9 @@ export function AppointmentList({
     // Get doctor name (could be in various formats depending on API response)
     const doctorName = appointment.doctor?.name || doctor.name || "Unknown Doctor";
     const doctorSpecialty = appointment.doctor?.specialty || doctor.specialty || "Unknown Specialty";
-
     
-   
     // Get patient name (could be in various formats depending on API response)
-    const patientName = appointment.patient?.profile.name || "Current Patient";
-
+    const patientName = appointment.patient?.profile?.name || "Current Patient";
     
     // Handle search matching
     const matchesSearch =
@@ -77,6 +75,42 @@ export function AppointmentList({
     });
   };
 
+  // Dropdown action handlers
+  const handleViewDetails = (appointment) => {
+    setOpenDropdownId(null);
+    setTimeout(() => {
+      onViewDetails && onViewDetails(appointment);
+    }, 100);
+  };
+
+  const handleEditAppointment = (appointment) => {
+    setOpenDropdownId(null);
+    setTimeout(() => {
+      onEditAppointment && onEditAppointment(appointment);
+    }, 100);
+  };
+
+  const handleCompleteAppointment = (appointment) => {
+    setOpenDropdownId(null);
+    setTimeout(() => {
+      onCompleteAppointment && onCompleteAppointment(appointment);
+    }, 100);
+  };
+
+  const handleChangeStatus = (appointmentId, status) => {
+    setOpenDropdownId(null);
+    setTimeout(() => {
+      onChangeStatus && onChangeStatus(appointmentId, status);
+    }, 100);
+  };
+
+  const handleCancelAppointment = (appointmentId) => {
+    setOpenDropdownId(null);
+    setTimeout(() => {
+      onCancelAppointment && onCancelAppointment(appointmentId);
+    }, 100);
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -109,10 +143,11 @@ export function AppointmentList({
                 className="pl-8 w-[250px]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search appointments"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[150px]" aria-label="Filter by status">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -161,16 +196,20 @@ export function AppointmentList({
                     ...appointment,
                     doctorName: appointment.doctor?.name || doctor.name || "Unknown Doctor",
                     doctorSpecialty: appointment.doctor?.specialty || doctor.specialty || "Unknown Specialty",
-                    patientName:  appointment.patient?.profile.name || "Current Patient",
+                    patientName: appointment.patient?.profile?.name || "Current Patient",
                     formattedDate: formatDate(appointment.date)
                   };
                   
+                  const appointmentId = appointment._id || `appointment-${Math.random()}`;
+                  
                   return (
-                    <TableRow key={appointment._id || `appointment-${Math.random()}`}>
+                    <TableRow key={appointmentId}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{formattedAppointment.doctorName.charAt(0)}</AvatarFallback>
+                            <AvatarFallback>
+                              {formattedAppointment.doctorName?.charAt(0) || "D"}
+                            </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium">{formattedAppointment.doctorName}</p>
@@ -182,13 +221,13 @@ export function AppointmentList({
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
                             <AvatarFallback>
-                              {formattedAppointment.patientName.charAt(0)}
+                              {formattedAppointment.patientName?.charAt(0) || "P"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium">{formattedAppointment.patientName}</p>
                             <p className="text-xs text-muted-foreground">
-                              {appointment.patient?.profile.email || "Patient"}
+                              {appointment.patient?.profile?.email || "Patient"}
                             </p>
                           </div>
                         </div>
@@ -196,7 +235,7 @@ export function AppointmentList({
                       <TableCell className="hidden md:table-cell">
                         <div className="flex flex-col">
                           <span>{formattedAppointment.formattedDate}</span>
-                          <span className="text-xs text-muted-foreground">{appointment.time}</span>
+                          <span className="text-xs text-muted-foreground">{appointment.time || "No time set"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -206,36 +245,61 @@ export function AppointmentList({
                         <StatusBadge status={appointment.status || "scheduled"} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        <DropdownMenu
+                          open={openDropdownId === appointmentId}
+                          onOpenChange={(open) => {
+                            if (open) {
+                              setOpenDropdownId(appointmentId);
+                            } else {
+                              setOpenDropdownId(null);
+                            }
+                          }}
+                        >
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              aria-label={`Actions for appointment with ${formattedAppointment.doctorName}`}
+                            >
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onViewDetails && onViewDetails(appointment)}>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem 
+                              onClick={() => handleViewDetails(appointment)}
+                              className="cursor-pointer"
+                            >
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onEditAppointment && onEditAppointment(appointment)}>
+                            <DropdownMenuItem 
+                              onClick={() => handleEditAppointment(appointment)}
+                              className="cursor-pointer"
+                            >
                               Edit Appointment
                             </DropdownMenuItem>
-                            {/* Updated: Use completion form instead of direct status change */}
+                            {/* Complete appointment for scheduled appointments */}
                             {appointment.status !== "completed" && appointment.status === "scheduled" && (
-                              <DropdownMenuItem onClick={() => onCompleteAppointment && onCompleteAppointment(appointment)}>
+                              <DropdownMenuItem 
+                                onClick={() => handleCompleteAppointment(appointment)}
+                                className="cursor-pointer"
+                              >
                                 Complete Appointment
                               </DropdownMenuItem>
                             )}
-                            {/* Keep the old mark as completed for non-scheduled appointments if needed */}
+                            {/* Mark as completed for non-scheduled appointments */}
                             {appointment.status !== "completed" && appointment.status !== "scheduled" && (
-                              <DropdownMenuItem onClick={() => onChangeStatus && onChangeStatus(appointment._id, "completed")}>
+                              <DropdownMenuItem 
+                                onClick={() => handleChangeStatus(appointment._id, "completed")}
+                                className="cursor-pointer"
+                              >
                                 Mark as Completed
                               </DropdownMenuItem>
                             )}
+                            {/* Cancel appointment */}
                             {appointment.status !== "canceled" && (
                               <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => onCancelAppointment && onCancelAppointment(appointment._id)}
+                                className="text-destructive cursor-pointer focus:text-destructive"
+                                onClick={() => handleCancelAppointment(appointment._id)}
                               >
                                 Cancel Appointment
                               </DropdownMenuItem>
@@ -252,7 +316,7 @@ export function AppointmentList({
                     No appointments found matching your search criteria.
                   </TableCell>
                 </TableRow>
-                )}
+              )}
             </TableBody>
           </Table>
         </div>
