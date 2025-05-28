@@ -104,8 +104,6 @@ const MedicalHistorySection = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Appointments</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="ongoing">Ongoing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
