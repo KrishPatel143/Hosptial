@@ -58,14 +58,21 @@ export default function LoginForm() {
       
       if (response.success) {
         // Save JWT token to cookies
-        console.log( response.token);
+        console.log( response);
+        
         // Show success toast
         toast.success("Login Successful", {
           description: "Redirecting to dashboard...",
         })
         
         // Redirect to home/dashboard
-        router.push('/')
+        if (response.user.role == "patient") {
+          
+          router.push('/')
+        }else{
+          router.push('/admin')
+
+        }
       } else {
         // Handle unsuccessful login
         toast.error("Login Failed", {
